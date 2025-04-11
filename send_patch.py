@@ -1,22 +1,17 @@
 import rtmidi
 import time
+from config import OUTPUT_PORT_NAME, DELAY
 
-# Global variable for MIDI port
-# TODO: move to config file
-OUTPUT_PORT_NAME = 'reface DX 1'
-
-DELAY = 0.1
-
-def main():
+def send_patch():
   # MIDI port initialization
   midiout = rtmidi.MidiOut()
   ports = midiout.get_ports()
   outport_idx = next((i for i, name in enumerate(ports) if name == OUTPUT_PORT_NAME), None)
 
-  if outport_idx is None:
-    raise RuntimeError('Port for Reface DX not found.')
-  else:
+  try:
     midiout.open_port(outport_idx)
+  except RuntimeError:
+    print('Port for Reface DX not found.')  
 
   # Read .syx file
   with open('dx_patch.syx', 'rb') as f:
@@ -46,6 +41,3 @@ def main():
 
   midiout.close_port()
   print('Preset sent to Reface DX.')
-
-if __name__ == '__main__':
-  main()
