@@ -2,6 +2,7 @@ import mido
 import tkinter as tk
 import threading
 from get_from_reface import get_from_reface
+from save_patch import save_patch
 from send_patch import send_patch
 from config import INPUT_PORT_NAME
 import state
@@ -48,21 +49,22 @@ def main():
 
   # Define buttons
   get_btn = tk.Button(root, text='get patch from reface', height=2, width=25)
+  save_btn = tk.Button(root, text='save patch', height=2, width=25, command=save_patch)
   send_btn = tk.Button(root, text='send patch', height=2, width=25)
 
-  # Set commands
-  get_btn.config(command=lambda: run_in_thread(get_from_reface, [get_btn, send_btn]))
-  send_btn.config(command=lambda: run_in_thread(send_patch, [get_btn, send_btn]))
+  # Set run_in_thread commands
+  get_btn.config(command=lambda: run_in_thread(get_from_reface, [get_btn, save_btn, send_btn]))
+  send_btn.config(command=lambda: run_in_thread(send_patch, [get_btn, save_btn, send_btn]))
 
   # Place buttons in the application
   get_btn.pack(pady=10)
+  save_btn.pack(pady=10)
   send_btn.pack(pady=10)
 
-
-  # Update connection status and patch's name
   last_patch = ['']
 
   def update_status():
+    # Update connection status
     if is_connected():
       connection_status.config(bg='green')
       get_btn.config(state='normal')
@@ -73,10 +75,16 @@ def main():
       get_btn.config(state='disabled')
       send_btn.config(state='disabled')
 
-
+    # Update loaded patch's name
     if state.current_patch_name != last_patch[0]:
       patch_name.config(text=f"Current patch: {state.current_patch_name}")
       last_patch[0] = state.current_patch_name
+
+    # Enable save button if patch is loaded
+    if state.current_patch:
+      save_btn.config(state='normal')
+    else:
+      save_btn.config(state='disabled')
 
     # Check status every one second
     root.after(1000, update_status)
