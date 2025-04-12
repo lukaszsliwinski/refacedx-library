@@ -40,4 +40,4 @@ def send_patch():
       i += 1
 
   midiout.close_port()
-  print('Preset sent to Reface DX.')
+  print('Patch sent to Reface DX.')

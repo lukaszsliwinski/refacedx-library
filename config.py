@@ -2,8 +2,8 @@
 INPUT_PORT_NAME = 'reface DX 0'
 OUTPUT_PORT_NAME = 'reface DX 1'
 
-TIMEOUT = 2
-DELAY = 0.1
+TIMEOUT = 5
+DELAY = 0.2
 
 # Dump request for reface DX (from documentation)
 DUMP_REQUEST = [

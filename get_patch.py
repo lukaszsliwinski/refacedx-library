@@ -27,4 +27,5 @@ def get_patch():
       for msg in sysex_data:
         f.write(bytes([0xF0] + list(msg.data) + [0xF7]))
 
+    print('Patch received and saved.')
     # TODO: .txt
