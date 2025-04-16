@@ -1,11 +1,25 @@
 import mido
 import tkinter as tk
 import threading
+import os
+from glob import glob
 from get_from_reface import get_from_reface
 from save_patch import save_patch
 from send_patch import send_patch
 from config import INPUT_PORT_NAME
 import state
+
+# Load sysex files from the specified folder
+def load_sysex_file_list(listbox):
+    listbox.delete(0, tk.END)
+    if not os.path.exists(state.syx_folder):
+        os.makedirs(state.syx_folder)
+
+    files = [f for f in os.listdir(state.syx_folder) if f.lower().endswith('.syx')]
+    files.sort()
+
+    for f in files:
+        listbox.insert(tk.END, f)
 
 # Check if Reface DX is connected
 def is_connected():
@@ -35,55 +49,71 @@ def run_in_thread(fn, btns):
 def main():
   root = tk.Tk()
   root.title('Reface DX Library')
-  root.geometry('300x300')
+  root.geometry('300x450')
 
-  # Connection status label
-  connection_status = tk.Canvas(root, width=20, height=20)
+  main_frame = tk.Frame(root)
+  main_frame.pack(fill='both', expand=True)
+
+
+
+  # Connection status
+  status_frame = tk.Frame(main_frame)
+  status_frame.pack(fill='both')
+
+  # TODO: Add a label
+  connection_status = tk.Canvas(status_frame, width=20, height=20)
   connection_status.pack(pady=5)
-  
 
-  # Show current patch's name
-  patch_name = tk.Label(root, text='Current patch: no patch loaded')
-  patch_name.pack(pady=5)
 
+
+  # Listbox with saved patches
+  listbox_frame = tk.Frame(main_frame)
+  listbox_frame.pack()
+
+  tk.Label(listbox_frame, text='<wybierz katalog>').pack()
+
+  preset_listbox = tk.Listbox(listbox_frame, height=20, width=40)
+  preset_listbox.pack(side='left', fill='y')
+
+  scrollbar = tk.Scrollbar(listbox_frame, orient='vertical')
+  scrollbar.config(command=preset_listbox.yview)
+  scrollbar.pack(side='right', fill='y')
+
+  preset_listbox.config(yscrollcommand=scrollbar.set)
+
+  # Load files on start
+  load_sysex_file_list(preset_listbox)
+
+
+  # Buttons
+  buttons_frame = tk.Frame(main_frame)
+  buttons_frame.pack()
 
   # Define buttons
-  get_btn = tk.Button(root, text='get patch from reface', height=2, width=25)
-  save_btn = tk.Button(root, text='save patch', height=2, width=25, command=save_patch)
-  send_btn = tk.Button(root, text='send patch', height=2, width=25)
+  load_btn = tk.Button(buttons_frame, text='LOAD', height=2, width=15)
+  save_btn = tk.Button(buttons_frame, text='SAVE', height=2, width=15)
+
 
   # Set run_in_thread commands
-  get_btn.config(command=lambda: run_in_thread(get_from_reface, [get_btn, save_btn, send_btn]))
-  send_btn.config(command=lambda: run_in_thread(send_patch, [get_btn, save_btn, send_btn]))
+  load_btn.config(command=lambda: run_in_thread(send_patch, [load_btn, save_btn]))
+  save_btn.config(command=lambda: run_in_thread(get_from_reface, [load_btn, save_btn]))
 
   # Place buttons in the application
-  get_btn.pack(pady=10)
-  save_btn.pack(pady=10)
-  send_btn.pack(pady=10)
+  load_btn.pack(side='left', padx=15, pady=10)
+  save_btn.pack(side='right', padx=15, pady=10)
 
-  last_patch = ['']
+
 
   def update_status():
     # Update connection status
     if is_connected():
       connection_status.config(bg='green')
-      get_btn.config(state='normal')
-      send_btn.config(state='normal')
+      load_btn.config(state='normal')
+      save_btn.config(state='normal')
 
     else:
       connection_status.config(bg='red')
-      get_btn.config(state='disabled')
-      send_btn.config(state='disabled')
-
-    # Update loaded patch's name
-    if state.current_patch_name != last_patch[0]:
-      patch_name.config(text=f"Current patch: {state.current_patch_name}")
-      last_patch[0] = state.current_patch_name
-
-    # Enable save button if patch is loaded
-    if state.current_patch:
-      save_btn.config(state='normal')
-    else:
+      load_btn.config(state='disabled')
       save_btn.config(state='disabled')
 
     # Check status every one second

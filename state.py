@@ -1,2 +1,3 @@
 current_patch = None
-current_patch_name = 'no patch loaded'
+current_patch_name = None
+syx_folder = 'C:/aktualne/presets'
