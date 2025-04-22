@@ -3,9 +3,8 @@ import tkinter as tk
 import threading
 import os
 from glob import glob
-from get_from_reface import get_from_reface
 from save_patch import save_patch
-from send_patch import send_patch
+from load_patch import load_patch
 from config import INPUT_PORT_NAME
 import state
 
@@ -95,8 +94,8 @@ def main():
 
 
   # Set run_in_thread commands
-  load_btn.config(command=lambda: run_in_thread(send_patch, [load_btn, save_btn]))
-  save_btn.config(command=lambda: run_in_thread(get_from_reface, [load_btn, save_btn]))
+  load_btn.config(command=lambda: run_in_thread(load_patch, [load_btn, save_btn]))
+  save_btn.config(command=lambda: run_in_thread(save_patch, [load_btn, save_btn]))
 
   # Place buttons in the application
   load_btn.pack(side='left', padx=15, pady=10)

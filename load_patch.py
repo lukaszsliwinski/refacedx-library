@@ -2,7 +2,7 @@ import rtmidi
 import time
 from config import OUTPUT_PORT_NAME, DELAY
 
-def send_patch():
+def load_patch():
   # MIDI port initialization
   midiout = rtmidi.MidiOut()
   ports = midiout.get_ports()
