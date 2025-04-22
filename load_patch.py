@@ -1,6 +1,7 @@
 import rtmidi
 import time
 from config import OUTPUT_PORT_NAME, DELAY
+import state
 
 def load_patch():
   # MIDI port initialization
@@ -14,7 +15,7 @@ def load_patch():
     print('Port for Reface DX not found.')  
 
   # Read .syx file
-  with open('dx_patch.syx', 'rb') as f:
+  with open(f'{state.syx_folder}/{state.selected_file}', 'rb') as f:
     data = list(f.read())
 
   i = 0

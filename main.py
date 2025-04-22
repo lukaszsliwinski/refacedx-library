@@ -45,6 +45,16 @@ def run_in_thread(fn, btns):
   thread.daemon = True
   thread.start()
 
+
+# Save selected patch name in memory
+def on_select_file(event):
+  selection = event.widget.curselection()
+  if selection:
+    index = selection[0]
+    filename = event.widget.get(index)
+    state.selected_file = filename
+
+
 def main():
   root = tk.Tk()
   root.title('Reface DX Library')
@@ -79,6 +89,7 @@ def main():
   scrollbar.pack(side='right', fill='y')
 
   preset_listbox.config(yscrollcommand=scrollbar.set)
+  preset_listbox.bind("<<ListboxSelect>>", on_select_file)
 
   # Load files on start
   load_sysex_file_list(preset_listbox)
