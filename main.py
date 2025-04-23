@@ -2,23 +2,40 @@ import mido
 import tkinter as tk
 import threading
 import os
-from glob import glob
 from save_patch import save_patch
 from load_patch import load_patch
 from config import INPUT_PORT_NAME
 import state
 
 # Load sysex files from the specified folder
-def load_sysex_file_list(listbox):
-    listbox.delete(0, tk.END)
-    if not os.path.exists(state.syx_folder):
-        os.makedirs(state.syx_folder)
+def load_sysex_file_list(listbox, label, change_path=False):
+  if change_path:
+    # Open a file dialog to select a new folder
+    folder_path = tk.filedialog.askdirectory(initialdir='C:/', title='Select folder with SysEx files')
+    if folder_path:
+      state.syx_folder = folder_path
+      label.config(text=state.syx_folder)
+  
+  listbox.delete(0, tk.END)
+  if not os.path.exists(state.syx_folder):
+    os.makedirs(state.syx_folder)
 
-    files = [f for f in os.listdir(state.syx_folder) if f.lower().endswith('.syx')]
-    files.sort()
+  files = [f for f in os.listdir(state.syx_folder) if f.lower().endswith('.syx')]
+  files.sort()
 
-    for f in files:
-        listbox.insert(tk.END, f)
+  for f in files:
+    listbox.insert(tk.END, f)
+
+  # Select the first file in the listbox
+  if files:
+
+    # TODO: disable buttons if no files
+
+    listbox.selection_set(0)
+    event = tk.Event()
+    event.widget = listbox
+    on_select_file(event)
+
 
 # Check if Reface DX is connected
 def is_connected():
@@ -44,7 +61,6 @@ def run_in_thread(fn, btns):
   thread = threading.Thread(target=disable_and_run)
   thread.daemon = True
   thread.start()
-
 
 # Save selected patch name in memory
 def on_select_file(event):
@@ -75,11 +91,20 @@ def main():
 
 
 
+  # Listbox header with patches directory
+  listbox_header_frame = tk.Frame(main_frame)
+  listbox_header_frame.pack()
+
+  current_path_label = tk.Label(listbox_header_frame, text=state.syx_folder)
+  current_path_label.pack(side='left')
+
+  change_path = tk.Button(listbox_header_frame, text='...', height=1, width=2)
+  change_path.pack(side='right')
+  change_path.config(command=lambda: load_sysex_file_list(preset_listbox, current_path_label, True))
+
   # Listbox with saved patches
   listbox_frame = tk.Frame(main_frame)
   listbox_frame.pack()
-
-  tk.Label(listbox_frame, text='<wybierz katalog>').pack()
 
   preset_listbox = tk.Listbox(listbox_frame, height=20, width=40)
   preset_listbox.pack(side='left', fill='y')
@@ -90,10 +115,6 @@ def main():
 
   preset_listbox.config(yscrollcommand=scrollbar.set)
   preset_listbox.bind("<<ListboxSelect>>", on_select_file)
-
-  # Load files on start
-  load_sysex_file_list(preset_listbox)
-
 
   # Buttons
   buttons_frame = tk.Frame(main_frame)
@@ -113,6 +134,8 @@ def main():
   save_btn.pack(side='right', padx=15, pady=10)
 
 
+  # Load files on start
+  load_sysex_file_list(preset_listbox, current_path_label, not state.syx_folder)
 
   def update_status():
     # Update connection status
