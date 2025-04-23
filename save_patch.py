@@ -2,7 +2,6 @@ import mido
 import time
 from tkinter import filedialog
 from config import INPUT_PORT_NAME, OUTPUT_PORT_NAME, TIMEOUT, DELAY, DUMP_REQUEST
-import state
 
 def save_patch():
   # Open MIDI ports
@@ -30,9 +29,6 @@ def save_patch():
 
     if not sysex_data:
       raise TimeoutError('No SysEx response')
-    
-    # Store patch name in apps memory
-    state.current_patch_name = name
 
     if not sysex_data:
       print('No patch loaded.')
@@ -41,7 +37,8 @@ def save_patch():
     file_path = filedialog.asksaveasfilename(
       defaultextension='.syx',
       filetypes=[('SysEx files', '*.syx')],
-      title='Zapisz patch jako...'
+      title='Save patch as...',
+      initialfile=name.strip().lower()
     )
 
     if file_path:
@@ -49,3 +46,6 @@ def save_patch():
         for msg in sysex_data:
           f.write(bytes([0xF0] + list(msg.data) + [0xF7]))
       print(f'Patch saved in : {file_path}')
+    
+    
+    # TODO: Reload listbox
