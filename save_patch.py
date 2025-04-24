@@ -46,6 +46,3 @@ def save_patch():
         for msg in sysex_data:
           f.write(bytes([0xF0] + list(msg.data) + [0xF7]))
       print(f'Patch saved in : {file_path}')
-    
-    
-    # TODO: Reload listbox

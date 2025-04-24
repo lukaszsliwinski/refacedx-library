@@ -75,7 +75,7 @@ def on_select_file(event):
 def main():
   root = tk.Tk()
   root.title('Reface DX Library')
-  root.geometry('300x450')
+  root.geometry('400x850')
 
   main_frame = tk.Frame(root)
   main_frame.pack(fill='both', expand=True)
@@ -84,30 +84,34 @@ def main():
 
   # Connection status
   status_frame = tk.Frame(main_frame)
-  status_frame.pack(fill='both')
+  status_frame.pack(fill='x', padx=10, pady=5)
 
-  # TODO: Add a label
-  connection_status = tk.Canvas(status_frame, width=20, height=20)
-  connection_status.pack(pady=5)
+  connection_status = tk.Canvas(status_frame, width=20, height=20, highlightthickness=0)
+  connection_status.pack(side='right')
 
+  connection_label = tk.Label(status_frame, text='', fg='gray')
+  connection_label.pack(side='right')
+
+  # Create status circle
+  status_circle = connection_status.create_oval(2, 2, 18, 18, fill="gray")
 
 
   # Listbox header with patches directory
   listbox_header_frame = tk.Frame(main_frame)
-  listbox_header_frame.pack()
+  listbox_header_frame.pack(fill='x', padx=10, pady=5)
 
   change_path = tk.Button(listbox_header_frame, text='...', height=1, width=2)
-  change_path.pack(side='left', fill='y')
+  change_path.pack(side='left')
   change_path.config(command=lambda: load_sysex_file_list(preset_listbox, current_path_label, True))
 
   current_path_label = tk.Label(listbox_header_frame, text=state.syx_folder)
-  current_path_label.pack(side='right', fill='y')
+  current_path_label.pack(side='left')
 
   # Listbox with saved patches
   listbox_frame = tk.Frame(main_frame)
   listbox_frame.pack()
 
-  preset_listbox = tk.Listbox(listbox_frame, height=20, width=40)
+  preset_listbox = tk.Listbox(listbox_frame, height=45, width=60)
   preset_listbox.pack(side='left', fill='y')
 
   scrollbar = tk.Scrollbar(listbox_frame, orient='vertical')
@@ -141,7 +145,8 @@ def main():
   def update_status():
     # Update connection status
     if is_connected():
-      connection_status.config(bg='green')
+      connection_status.itemconfig(status_circle, fill='green')
+      connection_label.config(text='connected', fg='green')
       save_btn.config(state='normal')
 
       # Check if there are files on list
@@ -151,7 +156,8 @@ def main():
         load_btn.config(state='disabled')
 
     else:
-      connection_status.config(bg='red')
+      connection_status.itemconfig(status_circle, fill='red')
+      connection_label.config(text='disconnected', fg='red')
       load_btn.config(state='disabled')
       save_btn.config(state='disabled')
 
