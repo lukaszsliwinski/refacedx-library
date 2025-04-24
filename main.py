@@ -46,7 +46,7 @@ def is_connected():
     return False
 
 # Use threading to prevent the application from freezing
-def run_in_thread(fn, btns):
+def run_in_thread(fn, btns, complete=None):
   def disable_and_run():
     # Disable buttons
     for btn in btns:
@@ -57,6 +57,8 @@ def run_in_thread(fn, btns):
     finally:
       for btn in btns:
         btn.config(state='normal')
+      if complete:
+        complete()
 
   thread = threading.Thread(target=disable_and_run)
   thread.daemon = True
@@ -95,12 +97,12 @@ def main():
   listbox_header_frame = tk.Frame(main_frame)
   listbox_header_frame.pack()
 
-  current_path_label = tk.Label(listbox_header_frame, text=state.syx_folder)
-  current_path_label.pack(side='left')
-
   change_path = tk.Button(listbox_header_frame, text='...', height=1, width=2)
-  change_path.pack(side='right')
+  change_path.pack(side='left', fill='y')
   change_path.config(command=lambda: load_sysex_file_list(preset_listbox, current_path_label, True))
+
+  current_path_label = tk.Label(listbox_header_frame, text=state.syx_folder)
+  current_path_label.pack(side='right', fill='y')
 
   # Listbox with saved patches
   listbox_frame = tk.Frame(main_frame)
@@ -127,7 +129,7 @@ def main():
 
   # Set run_in_thread commands
   load_btn.config(command=lambda: run_in_thread(load_patch, [load_btn, save_btn]))
-  save_btn.config(command=lambda: run_in_thread(save_patch, [load_btn, save_btn]))
+  save_btn.config(command=lambda: run_in_thread(save_patch, [load_btn, save_btn], lambda: load_sysex_file_list(preset_listbox, current_path_label)))
 
   # Place buttons in the application
   load_btn.pack(side='left', padx=15, pady=10)
