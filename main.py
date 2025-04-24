@@ -4,7 +4,7 @@ import threading
 import os
 from save_patch import save_patch
 from load_patch import load_patch
-from config import INPUT_PORT_NAME
+from config import INPUT_PORT_NAME, OUTPUT_PORT_NAME
 import state
 
 # Load sysex files from the specified folder
@@ -15,7 +15,7 @@ def load_sysex_file_list(listbox, label, change_path=False):
     if folder_path:
       state.syx_folder = folder_path
       label.config(text=state.syx_folder)
-  
+
   listbox.delete(0, tk.END)
   if not os.path.exists(state.syx_folder):
     os.makedirs(state.syx_folder)
@@ -39,11 +39,10 @@ def load_sysex_file_list(listbox, label, change_path=False):
 
 # Check if Reface DX is connected
 def is_connected():
-  try:
-    with mido.open_input(INPUT_PORT_NAME):
-      return True
-  except (OSError, IOError):
-    return False
+  return (
+    INPUT_PORT_NAME in mido.get_input_names() and
+    OUTPUT_PORT_NAME in mido.get_output_names()
+  )
 
 # Use threading to prevent the application from freezing
 def run_in_thread(fn, btns, complete=None):
