@@ -2,6 +2,7 @@ import mido
 import time
 from tkinter import filedialog
 from config import INPUT_PORT_NAME, OUTPUT_PORT_NAME, TIMEOUT, DELAY, DUMP_REQUEST
+import state
 
 def save_patch():
   # Open MIDI ports
@@ -38,7 +39,8 @@ def save_patch():
       defaultextension='.syx',
       filetypes=[('SysEx files', '*.syx')],
       title='Save patch as...',
-      initialfile=name.strip().lower()
+      initialfile=name.strip().lower(),
+      initialdir=state.syx_folder
     )
 
     if file_path:
