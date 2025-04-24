@@ -8,7 +8,9 @@ from config import INPUT_PORT_NAME, OUTPUT_PORT_NAME
 import state
 
 # Load sysex files from the specified folder
-def load_sysex_file_list(listbox, label, change_path=False):
+def load_sysex_file_list(listbox, label, load_btn, change_path=False):
+  load_btn.config(state='disabled')
+  
   if change_path:
     # Open a file dialog to select a new folder
     folder_path = tk.filedialog.askdirectory(initialdir='C:/', title='Select folder with SysEx files')
@@ -28,9 +30,7 @@ def load_sysex_file_list(listbox, label, change_path=False):
 
   # Select the first file in the listbox
   if files:
-
-    # TODO: disable buttons if no files
-
+    load_btn.config(state='normal')
     listbox.selection_set(0)
     event = tk.Event()
     event.widget = listbox
@@ -125,25 +125,30 @@ def main():
   load_btn = tk.Button(buttons_frame, text='LOAD', height=2, width=15)
   save_btn = tk.Button(buttons_frame, text='SAVE', height=2, width=15)
 
-
-  # Set run_in_thread commands
-  load_btn.config(command=lambda: run_in_thread(load_patch, [load_btn, save_btn]))
-  save_btn.config(command=lambda: run_in_thread(save_patch, [load_btn, save_btn], lambda: load_sysex_file_list(preset_listbox, current_path_label)))
-
   # Place buttons in the application
   load_btn.pack(side='left', padx=15, pady=10)
   save_btn.pack(side='right', padx=15, pady=10)
 
+  # Buttons event handlers
+  change_path.config(command=lambda: load_sysex_file_list(preset_listbox, current_path_label, load_btn, True))
+  load_btn.config(command=lambda: run_in_thread(load_patch, [load_btn, save_btn]))
+  save_btn.config(command=lambda: run_in_thread(save_patch, [load_btn, save_btn], lambda: load_sysex_file_list(preset_listbox, current_path_label, load_btn)))
+
 
   # Load files on start
-  load_sysex_file_list(preset_listbox, current_path_label, not state.syx_folder)
+  load_sysex_file_list(preset_listbox, current_path_label, load_btn, not state.syx_folder)
 
   def update_status():
     # Update connection status
     if is_connected():
       connection_status.config(bg='green')
-      load_btn.config(state='normal')
       save_btn.config(state='normal')
+
+      # Check if there are files on list
+      if preset_listbox.size() > 0:
+        load_btn.config(state='normal')
+      else:
+        load_btn.config(state='disabled')
 
     else:
       connection_status.config(bg='red')
@@ -151,7 +156,7 @@ def main():
       save_btn.config(state='disabled')
 
     # Check status every one second
-    root.after(1000, update_status)
+    root.after(100, update_status)
 
   update_status()
 
