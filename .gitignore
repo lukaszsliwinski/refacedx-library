@@ -1,8 +1,15 @@
-/__pycache__
-/refacedx-library-venv
-/dist
-/build
+# środowiska wirtualne (dowolna nazwa z "venv", tylko w głównym katalogu)
+/*venv*/
 
-*.spec
-*.syx
-*.txt
+# build PyInstallera
+dist/
+build/
+/packaging/*.spec
+
+# cache Pythona i narzędzi
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# presety użytkownika
+/presets/

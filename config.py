@@ -1,18 +1,19 @@
-# MIDI ports names
-INPUT_PORT_NAME = 'reface DX 0'
-OUTPUT_PORT_NAME = 'reface DX 1'
+import sys
+from pathlib import Path
 
-TIMEOUT = 5
-DELAY = 0.2
 
-# Dump request for reface DX (from documentation)
-DUMP_REQUEST = [
-    0x43,       # Yamaha ID
-    0x20,       # Device Number
-    0x7F,       # Group Number High
-    0x1C,       # Group Number Low
-    0x05,       # Model ID
-    0x0E,       # Address High (VOICE Bulk Header)
-    0x0F,       # Address Mid (VOICE Bulk Header)
-    0x00        # Address Low (VOICE Bulk Header)
-]
+def app_dir() -> Path:
+  """Katalog projektu (python main.py) lub katalog z .exe (po spakowaniu)."""
+  if getattr(sys, "frozen", False):
+    return Path(sys.executable).resolve().parent
+  return Path(__file__).resolve().parent
+
+def resource_path(relative: str) -> Path:
+    """Plik dołączony do aplikacji (python main.py lub po spakowaniu)."""
+    base = Path(getattr(sys, "_MEIPASS", app_dir()))
+    return base / relative
+
+PRESETS_DIR = app_dir() / "presets"
+
+USE_FAKE_DEVICE = True
+APP_TITLE = "reface DX Librarian"

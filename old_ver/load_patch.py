@@ -7,6 +7,9 @@ def load_patch():
   # MIDI port initialization
   midiout = rtmidi.MidiOut()
   ports = midiout.get_ports()
+  print('Available MIDI ports:')
+  for i, port in enumerate(ports):
+    print(f'{i}: {port}')
   outport_idx = next((i for i, name in enumerate(ports) if name == OUTPUT_PORT_NAME), None)
 
   try:
