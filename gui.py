@@ -5,6 +5,7 @@ from pathlib import Path
 
 from PySide6.QtCore import (
   QDir,
+  QEvent,
   QFile,
   QModelIndex,
   QPoint,
@@ -105,6 +106,7 @@ class MainWindow(QMainWindow):
     self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
     self.tree.customContextMenuRequested.connect(self._show_context_menu)
     self.tree.selectionModel().currentChanged.connect(self._update_target_label)
+    self.tree.installEventFilter(self)  # Enter / Delete
 
     # --- reszta interfejsu ---
     self.target_label = QLabel()
@@ -121,7 +123,7 @@ class MainWindow(QMainWindow):
 
     self.device_label = QLabel()
     self.statusBar().addPermanentWidget(self.device_label)
-    self.statusBar().showMessage("Gotowe. Dwukrotne kliknięcie pliku .syx wysyła go do urządzenia.")
+    self.statusBar().showMessage("Gotowe. Dwuklik lub Enter na pliku .syx wysyła go do urządzenia.")
     self._set_connected(None)
 
     # --- sprawdzanie, czy urządzenie jest gotowe ---
@@ -134,6 +136,7 @@ class MainWindow(QMainWindow):
     presets_index = self.proxy.mapFromSource(self.model.index(str(self.root_dir)))
     self.tree.setCurrentIndex(presets_index)
     self.tree.expand(presets_index)
+    self.tree.setFocus()  # od razu można używać klawiatury
     self._update_target_label()
 
   # ---------- pomocnicze ----------
@@ -223,6 +226,39 @@ class MainWindow(QMainWindow):
     self._polling = False
     if not self._busy:
       self._set_connected(False)
+
+  # ---------- klawiatura ----------
+
+  def eventFilter(self, obj, event):
+    if obj is self.tree and event.type() == QEvent.Type.KeyPress:
+      key = event.key()
+      if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Delete):
+        if not event.isAutoRepeat():  # przytrzymany klawisz nie powtarza akcji
+          if key == Qt.Key.Key_Delete:
+            self._on_delete_pressed()
+          else:
+            self._on_enter_pressed()
+        return True
+    return super().eventFilter(obj, event)
+
+  def _on_enter_pressed(self):
+    """Folder: rozwiń/zwiń. Preset: wyślij do urządzenia."""
+    index = self.tree.currentIndex()
+    if not index.isValid():
+      return
+    if self.model.isDir(self.proxy.mapToSource(index)):
+      self.tree.setExpanded(index, not self.tree.isExpanded(index))
+    else:
+      self._send_preset(index)
+
+  def _on_delete_pressed(self):
+    index = self.tree.currentIndex()
+    if not index.isValid() or self._busy:
+      return
+    path = Path(self.model.filePath(self.proxy.mapToSource(index)))
+    if path.resolve() == self.root_dir.resolve():
+      return  # katalogu głównego nie można usunąć (tak samo jak w menu kontekstowym)
+    self._delete_item(path)  # pyta o potwierdzenie
 
   # ---------- menu kontekstowe: nowy folder / zmień nazwę / usuń ----------
 
@@ -392,10 +428,13 @@ class MainWindow(QMainWindow):
 
   @Slot(QModelIndex)
   def _on_double_click(self, index: QModelIndex):
-    src = self.proxy.mapToSource(index)
-    if self._busy or self.model.isDir(src):
-      return  # foldery rozwija/zwija samo drzewo
-    path = Path(self.model.filePath(src))
+    if not self.model.isDir(self.proxy.mapToSource(index)):  # foldery rozwija/zwija samo drzewo
+      self._send_preset(index)
+
+  def _send_preset(self, index: QModelIndex):
+    if self._busy:
+      return
+    path = Path(self.model.filePath(self.proxy.mapToSource(index)))
     if path.suffix.lower() != ".syx":
       return
 

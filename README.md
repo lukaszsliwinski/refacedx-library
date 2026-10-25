@@ -4,7 +4,8 @@ Simple preset librarian for the Yamaha reface DX synthesizer (Windows 11, USB-MI
 
 - browse the `presets` folder as a tree (subfolders supported)
 - download a preset from the device and save it in the selected folder
-- double-click a `.syx` file to send it to the device
+- double-click a `.syx` file (or press Enter) to send it to the device
+- keyboard: Enter expands/collapses a folder, Delete removes the selected file or folder (with confirmation)
 - right-click menu: create folder, rename, delete (the root `presets` folder can only get new subfolders)
 
 ## Requirements
