@@ -1,8 +1,0 @@
-/__pycache__
-/refacedx-library-venv
-/dist
-/build
-
-*.spec
-*.syx
-*.txt

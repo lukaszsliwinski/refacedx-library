@@ -224,7 +224,6 @@ class MainWindow(QMainWindow):
     if not self._busy:
       self._set_connected(False)
 
-
   # ---------- menu kontekstowe: nowy folder / zmień nazwę / usuń ----------
 
   @staticmethod

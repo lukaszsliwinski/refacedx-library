@@ -38,12 +38,6 @@ def test_garbage_outside_message():
     syx.validate(b"\x01\x02" + VALID)
 
 
-def test_file_roundtrip(tmp_path):
-  p = tmp_path / "a.syx"
-  syx.write_syx_file(p, VALID)
-  assert syx.read_syx_file(p) == VALID
-
-
 # --- bulk dump reface DX ---
 
 def make_block(addr, data):
@@ -88,6 +82,49 @@ def test_bad_checksum():
   bad[-2] ^= 0x01
   with pytest.raises(syx.SyxError):
     syx.assemble_voice([blocks[0], bytes(bad), *blocks[2:]])
+
+
+def test_voice_blocks_full_voice():
+  blocks = make_voice()
+  assert syx.voice_blocks(b"".join(blocks)) == blocks
+
+
+def test_voice_blocks_partial_voice():
+  blocks = make_voice()
+  partial = [blocks[0], *blocks[2:]]  # bez bloku common - urządzenie to przyjmuje
+  assert syx.voice_blocks(b"".join(partial)) == partial
+
+
+def test_voice_blocks_rejects_foreign_message():
+  with pytest.raises(syx.SyxError):
+    syx.voice_blocks(b"".join(make_voice()) + VALID)
+
+
+def test_voice_blocks_rejects_bad_checksum():
+  data = bytearray(b"".join(make_voice()))
+  data[-2] ^= 0x01  # suma kontrolna footera
+  with pytest.raises(syx.SyxError):
+    syx.voice_blocks(bytes(data))
+
+
+def test_voice_blocks_rejects_header_footer_only():
+  blocks = make_voice()
+  with pytest.raises(syx.SyxError):
+    syx.voice_blocks(blocks[0] + blocks[-1])
+
+
+def test_file_roundtrip(tmp_path):
+  p = tmp_path / "a.syx"
+  data = b"".join(make_voice())
+  syx.write_syx_file(p, data)
+  assert syx.read_syx_file(p) == data
+
+
+def test_read_rejects_non_voice_file(tmp_path):
+  p = tmp_path / "a.syx"
+  p.write_bytes(VALID)
+  with pytest.raises(syx.SyxError):
+    syx.read_syx_file(p)
 
 
 def test_voice_name_strips_padding():

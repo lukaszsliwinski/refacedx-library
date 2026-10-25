@@ -59,8 +59,6 @@ def validate(data: bytes) -> list[bytes]:
       raise SyxError(
         f"Wiadomość {i}: to nie Yamaha (ID producenta 0x{msg[1]:02X}, oczekiwano 0x43)."
       )
-    # TODO: tu dodaj sprawdzanie nagłówka modelu reface DX, oczekiwanej
-    # długości i sumy kontrolnej - według dokumentacji MIDI.
   return messages
 
 
@@ -119,6 +117,21 @@ def assemble_voice(messages: list[bytes]) -> bytes:
   return b"".join(blocks[addr] for addr in VOICE_BLOCKS)
 
 
+def voice_blocks(data: bytes) -> list[bytes]:
+  """Bloki głosu reface DX do wysłania. Rzuca SyxError, jeśli plik zawiera coś innego.
+
+  Urządzenie przyjmuje bloki w dowolnej kolejności i niekompletny zestaw,
+  ale odrzuca całość, jeśli trafi się blok spoza głosu (dokumentacja, s. 8)."""
+  messages = validate(data)
+  for i, msg in enumerate(messages, start=1):
+    if not is_bulk_dump(msg) or block_address(msg) not in VOICE_BLOCKS:
+      raise SyxError(f"Wiadomość {i} nie jest blokiem presetu reface DX.")
+    check_bulk_block(msg)
+  if not any(block_address(m) not in (HEADER_ADDR, FOOTER_ADDR) for m in messages):
+    raise SyxError("Plik nie zawiera danych presetu.")
+  return messages
+
+
 def voice_name(data: bytes) -> str:
   """Nazwa głosu z bloku common (bez spacji z końca)."""
   for msg in split_messages(data):
@@ -130,10 +143,10 @@ def voice_name(data: bytes) -> str:
 
 def read_syx_file(path: Path) -> bytes:
   data = Path(path).read_bytes()
-  validate(data)
+  voice_blocks(data)
   return data
 
 
 def write_syx_file(path: Path, data: bytes) -> None:
-  validate(data)
+  voice_blocks(data)
   Path(path).write_bytes(data)
