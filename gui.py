@@ -33,12 +33,19 @@ from midi_io import RefaceDevice
 from workers import Worker
 
 
+WINDOWS_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
+                    *(f"LPT{i}" for i in range(1, 10))}
+
+
 def safe_filename(name: str) -> str:
   name = name.strip()
   if name.lower().endswith(".syx"):
     name = name[:-4]
-  name = re.sub(r'[<>:"/\\|?*]', "_", name)
-  return name.strip(" .")
+  name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name)
+  name = name.strip(" .")
+  if name.upper() in WINDOWS_RESERVED:
+    name += "_"  # np. "CON" - Windows nie pozwala na taką nazwę pliku
+  return name
 
 
 class RootOnlyProxy(QSortFilterProxyModel):
@@ -361,35 +368,26 @@ class MainWindow(QMainWindow):
 
   def _on_dump_done(self, data: bytes, target_dir: Path):
     try:
-      syx.validate(data)
-    except syx.SyxError as exc:
-      QMessageBox.warning(self, "Nieprawidłowe dane", f"Urządzenie zwróciło błędne dane:\n{exc}")
-      return
+      name = safe_filename(syx.voice_name(data))
+    except syx.SyxError:
+      name = ""
+    if not name:  # pusta nazwa w urządzeniu albo same niedozwolone znaki
+      name = datetime.now().strftime("preset_%Y%m%d_%H%M%S")
 
-    default = datetime.now().strftime("preset_%Y%m%d_%H%M%S")
-    name, ok = QInputDialog.getText(
-      self, "Zapisz preset", f"Nazwa pliku (bez rozszerzenia)\nKatalog: {target_dir}", text=default
-    )
-    name = safe_filename(name) if ok else ""
-    if not name:
-      self.statusBar().showMessage("Zapis anulowany.", 5000)
-      return
-
-    path = target_dir / f"{name}.syx"
-    if path.exists():
-      answer = QMessageBox.question(
-        self, "Plik istnieje", f"{path.name} już istnieje. Nadpisać?",
-        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-      )
-      if answer != QMessageBox.StandardButton.Yes:
-        self.statusBar().showMessage("Zapis anulowany.", 5000)
-        return
     try:
+      path = self._unique_path(target_dir, name)
       syx.write_syx_file(path, data)
-    except OSError as exc:
-      QMessageBox.critical(self, "Błąd zapisu", str(exc))
+    except (OSError, syx.SyxError) as exc:
+      QMessageBox.critical(self, "Błąd zapisu", f"Nie udało się zapisać presetu:\n{exc}")
       return
     self.statusBar().showMessage(f"Zapisano: {path.name}", 5000)
+
+  def _unique_path(self, folder: Path, name: str) -> Path:
+    """Ścieżka do nowego pliku - przy kolizji dopisuje _2, _3... zamiast nadpisywać."""
+    candidate, n = f"{name}.syx", 2
+    while self._name_taken(folder, candidate):
+      candidate, n = f"{name}_{n}.syx", n + 1
+    return folder / candidate
 
   # ---------- wysyłanie do urządzenia ----------
 

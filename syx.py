@@ -64,6 +64,70 @@ def validate(data: bytes) -> list[bytes]:
   return messages
 
 
+# --- bulk dump głosu reface DX (dokumentacja: reface Data List, s. 6-9) ---
+
+MODEL_ID = 0x05
+HEADER_ADDR = (0x0E, 0x0F, 0x00)
+COMMON_ADDR = (0x30, 0x00, 0x00)
+FOOTER_ADDR = (0x0F, 0x0F, 0x00)
+# kolejność bloków w pliku: header, common, operatory 1-4, footer
+VOICE_BLOCKS = [HEADER_ADDR, COMMON_ADDR] + [(0x31, op, 0x00) for op in range(4)] + [FOOTER_ADDR]
+NAME_LEN = 10
+
+# F0 43 0n 7F 1C [count H] [count L] [model] [adres x3] dane... [suma] F7
+_PREFIX_LEN = 7
+
+
+def is_bulk_dump(msg: bytes) -> bool:
+  """Czy wiadomość to blok bulk dump reface DX."""
+  return (
+    len(msg) >= 13
+    and msg[0] == SYSEX_START
+    and msg[1] == YAMAHA_ID
+    and msg[2] & 0xF0 == 0x00
+    and msg[3] == 0x7F
+    and msg[4] == 0x1C
+    and msg[7] == MODEL_ID
+  )
+
+
+def block_address(msg: bytes) -> tuple[int, int, int]:
+  return msg[8], msg[9], msg[10]
+
+
+def check_bulk_block(msg: bytes) -> None:
+  """Sprawdza liczbę bajtów i sumę kontrolną bloku. Rzuca SyxError."""
+  byte_count = (msg[5] << 7) | msg[6]
+  # byte count obejmuje bajty od Model ID do danych włącznie (bez sumy i F7)
+  if byte_count != len(msg) - _PREFIX_LEN - 2:
+    raise SyxError(f"Blok {bytes(block_address(msg)).hex(' ')}: nieprawidłowa długość.")
+  # suma od Model ID do sumy kontrolnej włącznie musi mieć 7 dolnych bitów = 0
+  if sum(msg[_PREFIX_LEN:-1]) & 0x7F:
+    raise SyxError(f"Blok {bytes(block_address(msg)).hex(' ')}: błędna suma kontrolna.")
+
+
+def assemble_voice(messages: list[bytes]) -> bytes:
+  """Składa kompletny głos z bloków (w dowolnej kolejności). Rzuca SyxError."""
+  blocks: dict[tuple[int, int, int], bytes] = {}
+  for msg in messages:
+    if is_bulk_dump(msg):
+      check_bulk_block(msg)
+      blocks[block_address(msg)] = msg
+  missing = [addr for addr in VOICE_BLOCKS if addr not in blocks]
+  if missing:
+    raise SyxError(f"Niekompletny preset - brak {len(missing)} z {len(VOICE_BLOCKS)} bloków.")
+  return b"".join(blocks[addr] for addr in VOICE_BLOCKS)
+
+
+def voice_name(data: bytes) -> str:
+  """Nazwa głosu z bloku common (bez spacji z końca)."""
+  for msg in split_messages(data):
+    if is_bulk_dump(msg) and block_address(msg) == COMMON_ADDR:
+      start = _PREFIX_LEN + 4  # za Model ID i adresem
+      return bytes(msg[start:start + NAME_LEN]).decode("ascii", errors="replace").rstrip()
+  raise SyxError("Brak bloku z nazwą presetu.")
+
+
 def read_syx_file(path: Path) -> bytes:
   data = Path(path).read_bytes()
   validate(data)
