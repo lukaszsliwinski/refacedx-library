@@ -10,6 +10,7 @@ from PySide6.QtCore import (
   QPoint,
   QSortFilterProxyModel,
   QThreadPool,
+  QTimer,
   Qt,
   Slot,
 )
@@ -63,6 +64,8 @@ class MainWindow(QMainWindow):
     self.device = device
     self.root_dir = Path(root_dir)
     self._busy = False
+    self._connected: bool | None = None  # None = jeszcze nie sprawdzono
+    self._polling = False
 
     self.setWindowTitle(config.APP_TITLE)
     self.resize(560, 640)
@@ -109,8 +112,16 @@ class MainWindow(QMainWindow):
     central.setLayout(layout)
     self.setCentralWidget(central)
 
-    self.statusBar().addPermanentWidget(QLabel(f"Urządzenie: {device.name}"))
+    self.device_label = QLabel()
+    self.statusBar().addPermanentWidget(self.device_label)
     self.statusBar().showMessage("Gotowe. Dwukrotne kliknięcie pliku .syx wysyła go do urządzenia.")
+    self._set_connected(None)
+
+    # --- sprawdzanie, czy urządzenie jest gotowe ---
+    self.poll_timer = QTimer(self)
+    self.poll_timer.timeout.connect(self._poll_device)
+    self.poll_timer.start(config.DEVICE_POLL_MS)
+    self._poll_device()
 
     # rozwiń i zaznacz 'presets' na starcie
     presets_index = self.proxy.mapFromSource(self.model.index(str(self.root_dir)))
@@ -140,7 +151,7 @@ class MainWindow(QMainWindow):
 
   def _set_busy(self, busy: bool, message: str = ""):
     self._busy = busy
-    self.dump_button.setEnabled(not busy)
+    self.dump_button.setEnabled(not busy and bool(self._connected))
     if busy:
       self.statusBar().showMessage(message)
 
@@ -163,10 +174,48 @@ class MainWindow(QMainWindow):
     QMessageBox.critical(self, "Błąd urządzenia", message)
 
   def _check_device(self) -> bool:
-    if not self.device.is_connected():
-      QMessageBox.warning(self, "Brak urządzenia", "Nie wykryto reface DX.")
+    if not self._connected:
+      QMessageBox.warning(self, "Brak urządzenia", "reface DX nie jest gotowy do komunikacji.")
       return False
     return True
+
+  # ---------- stan połączenia ----------
+
+  def _set_connected(self, connected: bool | None):
+    previous = self._connected
+    self._connected = connected
+    color, text = {
+      True: ("#2e7d32", "gotowe"),
+      False: ("#c62828", "niedostępne"),
+      None: ("#9e9e9e", "sprawdzanie…"),
+    }[connected]
+    self.device_label.setText(f'<span style="color:{color}">●</span> {self.device.name}: {text}')
+    self.dump_button.setEnabled(bool(connected) and not self._busy)
+    if previous is not None and connected != previous:
+      msg = "Urządzenie gotowe." if connected else "Utracono połączenie z urządzeniem."
+      self.statusBar().showMessage(msg, 5000)
+
+  @Slot()
+  def _poll_device(self):
+    if self._busy or self._polling:
+      return  # porty trzyma nasza operacja albo poprzednie sprawdzenie jeszcze trwa
+    self._polling = True
+    worker = Worker(self.device.is_connected, on_done=None)
+    worker.signals.finished.connect(self._on_poll_finished)
+    worker.signals.error.connect(self._on_poll_error)
+    QThreadPool.globalInstance().start(worker)
+
+  @Slot(object, object)
+  def _on_poll_finished(self, _callback, connected):
+    self._polling = False
+    if not self._busy:  # wynik sprzed rozpoczęcia operacji jest już nieaktualny
+      self._set_connected(bool(connected))
+
+  @Slot(str)
+  def _on_poll_error(self, _message: str):
+    self._polling = False
+    if not self._busy:
+      self._set_connected(False)
 
 
   # ---------- menu kontekstowe: nowy folder / zmień nazwę / usuń ----------

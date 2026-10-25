@@ -15,5 +15,5 @@ def resource_path(relative: str) -> Path:
 
 PRESETS_DIR = app_dir() / "presets"
 
-USE_FAKE_DEVICE = True
+DEVICE_POLL_MS = 1000  # co ile sprawdzać, czy urządzenie jest gotowe
 APP_TITLE = "reface DX Librarian"
